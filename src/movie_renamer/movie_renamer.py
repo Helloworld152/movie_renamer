@@ -1,4 +1,6 @@
 import sys
+import os
+import datetime
 import refactor
 from PySide2.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QLineEdit, QPushButton, QFileDialog, QTextEdit)
@@ -16,14 +18,17 @@ class RenameApp(QMainWindow):
         self.layout = QVBoxLayout(self.central_widget)
 
         # 第一行：输入文件夹路径
-        folder_layout = QHBoxLayout()
-        self.folder_input = QLineEdit(self)
+        path_layout = QHBoxLayout()
+        self.path_input = QLineEdit(self)
         folder_button = QPushButton("选择文件夹", self)
-        folder_button.clicked.connect(self.select_folder)
-        folder_layout.addWidget(QLabel("文件夹路径:"))
-        folder_layout.addWidget(self.folder_input)
-        folder_layout.addWidget(folder_button)
-        self.layout.addLayout(folder_layout)
+        folder_button.clicked.connect(self.selectFolder)
+        files_button = QPushButton("选择多个文件", self)
+        files_button.clicked.connect(self.selectFiles)
+        path_layout.addWidget(QLabel("路径:"))
+        path_layout.addWidget(self.path_input)
+        path_layout.addWidget(folder_button)
+        path_layout.addWidget(files_button)
+        self.layout.addLayout(path_layout)
 
         # 第二行：输入匹配字符串
         match_layout = QHBoxLayout()
@@ -50,22 +55,43 @@ class RenameApp(QMainWindow):
         self.log_output.setReadOnly(True)
         self.layout.addWidget(self.log_output)
 
-    def select_folder(self):
+    def selectFolder(self):
         folder = QFileDialog.getExistingDirectory(self, "选择文件夹")
         if folder:
-            self.folder_input.setText(folder)
+            self.path_input.setText(folder)
+
+    def selectFiles(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "选择多个文件")
+        if files:
+            self.path_input.setText(';'.join(files))
 
     def log(self, message):
         self.log_output.append(message)
 
     def rename_files(self):
-        folder_path = self.folder_input.text()
+        path_input = self.path_input.text()
         match_string = self.match_input.text()
         offset = int(self.offset_input.text())
-        refactors = refactor.MovieRefactor(folder_path)
-        renameNum = refactors.RenameVideoFiles(match_string, offset)
+        renameNum = 0
 
-        self.log(f'文件夹：{folder_path} 共 {renameNum} 个文件重命名完成')
+        if os.path.isdir(path_input):
+            refactors = refactor.MovieRefactor(path_input)
+            renameNum = refactors.RenameVideoFiles(match_string, offset)
+            curTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.log(f'{curTime} 路径：{path_input} 共 {renameNum} 个文件重命名完成')
+        else:
+            file_paths = path_input.split(';')
+
+            for file_path in file_paths:
+                refactors = refactor.MovieRefactor(os.path.dirname(file_path))
+                if refactors.RenameFile(file_path, match_string, offset):
+                    curTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    self.log(f'{curTime} {path_input} 重命名完成')
+                    renameNum += 1
+
+            curTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if renameNum == 0:
+                self.log(f'{curTime} 选中的文件无需重命名')
 
 
 if __name__ == "__main__":

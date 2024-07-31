@@ -6,14 +6,6 @@ class MovieRefactor:
     def __init__(self, folderName):
         self.videoPattern = re.compile(r'.*\.(mp4|mkv|avi|mov|flv|wmv|webm|mpg|mpeg)$', re.IGNORECASE)
         self.imagePattern = re.compile(r'.*\.(jpg|jpeg|png|gif|bmp|tiff|svg|webp|heic)$', re.IGNORECASE)
-        self.fileNamePattern = {
-            'S01E01': re.compile(r'S(\d{1,2})E(\d{1,2})', re.IGNORECASE),
-            'Season 1 Episode 1': re.compile(r'Season (\d+) Episode (\d+)', re.IGNORECASE),
-            '1x01': re.compile(r'(\d+)x(\d+)', re.IGNORECASE),
-            'S1': re.compile(r'S(\d{1,2})', re.IGNORECASE),
-            'Season 1': re.compile(r'Season (\d+)', re.IGNORECASE),
-            'Specials': re.compile(r'Specials?\s*(\d{1,2})?', re.IGNORECASE)
-        }
         self.folderName = folderName
 
     def GetVideoFiles(self):
@@ -50,6 +42,8 @@ class MovieRefactor:
                     seasonNo = int(match.group(1))
                     return f'S{seasonNo:02}'
 
+            return ''
+
     def RenameFile(self, filePath, subString, step):
         episodePatterns = {
             'S01E01': re.compile(r'S(\d{1,2})E(\d{1,2})', re.IGNORECASE),
@@ -70,11 +64,17 @@ class MovieRefactor:
             if match:
                 if formatName == 'S01E01':
                     seasonNo = int(match.group(1))
+                    # 文件名季号为空，以文件名的季号为准
+                    if seasonStr == '' and step != 0:
+                        episodeNo = int(match.group(2)) + step
+                        formatted = f'{seasonNo:02}{episodeNo:02}'
                     # 文件名季号与文件夹季号不一致 or 偏移量不为0
-                    if seasonStr != f'S{seasonNo:02}' or step != 0:
+                    elif (seasonStr != '' and seasonStr != f'S{seasonNo:02}') or step != 0:
                         episodeNo = int(match.group(2)) + step
                         formatted = f'{seasonStr}E{episodeNo:02}'
                 if formatName == '01':
+                    if seasonStr == '':
+                        seasonStr = 'S01'
                     episodeNo = int(match.group(1)) + step
                     formatted = f'{seasonStr}E{episodeNo:02}'
 
