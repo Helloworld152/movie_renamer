@@ -6,7 +6,12 @@ class MovieRefactor:
     def __init__(self, folderName):
         self.videoPattern = re.compile(r'.*\.(mp4|mkv|avi|mov|flv|wmv|webm|mpg|mpeg)$', re.IGNORECASE)
         self.imagePattern = re.compile(r'.*\.(jpg|jpeg|png|gif|bmp|tiff|svg|webp|heic)$', re.IGNORECASE)
+        self.subTitlePattern = re.compile(r'.*\.(srt|ass|txt)$', re.IGNORECASE)
+        self.subTitleTxtPattern = re.compile(r'.*\.(ass.txt)$', re.IGNORECASE)
         self.folderName = folderName
+        self.videoFiles = []
+        self.imageFiles = []
+        self.subTitleFiles = []
 
     def GetVideoFiles(self):
         videoFiles = []
@@ -25,6 +30,21 @@ class MovieRefactor:
                     imgFiles.append(os.path.join(root, fileName))
         print(imgFiles)
         return imgFiles
+
+    def GetFolderNames(self):
+        for root, dirs, files in os.walk(self.folderName):
+            for fileName in files:
+                if self.videoPattern.match(fileName):
+                    self.videoFiles.append(os.path.join(root, fileName))
+                if self.imagePattern.match(fileName):
+                    self.imageFiles.append(os.path.join(root, fileName))
+                if self.subTitlePattern.match(fileName):
+                    if self.subTitleTxtPattern.match(fileName):
+                        oldFilePath = os.path.join(root, fileName)
+                        fileName = fileName.splitext(fileName)[0]
+                        newFilePath = os.path.join(root, fileName)
+                        os.rename(oldFilePath, newFilePath)
+                    self.subTitleFiles.append(os.path.join(root, fileName))
 
     def MatchSeason(self, dirName):
         seasonPatterns = {
@@ -46,8 +66,8 @@ class MovieRefactor:
 
     def RenameFile(self, filePath, subString, step):
         episodePatterns = {
-            'S01E01': re.compile(r'S(\d{1,2})E(\d{1,2})', re.IGNORECASE),
-            '01': re.compile(r'\b(\d{2})\b', re.IGNORECASE),
+            'S01E01': re.compile(r'S(\d{1,2})E(-?\d{1,2})', re.IGNORECASE),
+            '01': re.compile(r'\b(-?\d{2})\b', re.IGNORECASE),
         }
 
         fileName = os.path.basename(filePath)
@@ -82,15 +102,19 @@ class MovieRefactor:
                     newFileName = pattern.sub(formatted, fileName, 1)
                     newFilePath = os.path.join(dirPath, newFileName)
                     os.rename(filePath, newFilePath)
+
+                    # TODO: 删除影片相关信息文件，nfo、封面图等
                     print(f'Rename {filePath} to {newFilePath} success.')
                     return True
                 return False
 
     def RenameVideoFiles(self, subString='', step=0):
-        files = self.GetVideoFiles()
+        files = []
+        files.extend(self.videoFiles)
+        files.extend(self.subTitleFiles)
         renameNum = 0
         for filePath in files:
             isSuccess = self.RenameFile(filePath, subString, step)
-            if isSuccess == True:
+            if isSuccess:
                 renameNum += 1
         return renameNum
