@@ -31,7 +31,7 @@ class MovieRefactor:
         print(imgFiles)
         return imgFiles
 
-    def GetFolderNames(self):
+    def GetFolderFiles(self):
         for root, dirs, files in os.walk(self.folderName):
             for fileName in files:
                 if self.videoPattern.match(fileName):
@@ -39,9 +39,10 @@ class MovieRefactor:
                 if self.imagePattern.match(fileName):
                     self.imageFiles.append(os.path.join(root, fileName))
                 if self.subTitlePattern.match(fileName):
+                    # 字幕文件是txt，则重命名
                     if self.subTitleTxtPattern.match(fileName):
                         oldFilePath = os.path.join(root, fileName)
-                        fileName = fileName.splitext(fileName)[0]
+                        fileName = os.path.splitext(fileName)[0]
                         newFilePath = os.path.join(root, fileName)
                         os.rename(oldFilePath, newFilePath)
                     self.subTitleFiles.append(os.path.join(root, fileName))
@@ -104,14 +105,21 @@ class MovieRefactor:
                     os.rename(filePath, newFilePath)
 
                     # TODO: 删除影片相关信息文件，nfo、封面图等
+                    for ext in ['.nfo', '-thumb.jpg']:
+                        oldAuxFile = os.path.splitext(filePath)[0] + ext
+                        if os.path.exists(oldAuxFile):
+                            os.remove(oldAuxFile)
+
                     print(f'Rename {filePath} to {newFilePath} success.')
                     return True
                 return False
 
     def RenameVideoFiles(self, subString='', step=0):
+        self.GetFolderFiles()
         files = []
         files.extend(self.videoFiles)
         files.extend(self.subTitleFiles)
+        print(files)
         renameNum = 0
         for filePath in files:
             isSuccess = self.RenameFile(filePath, subString, step)
